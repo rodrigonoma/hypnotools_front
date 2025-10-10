@@ -1,0 +1,115 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #A6D05F 0%, #5B8A49 100%);
+  padding: 20px;
+  font-family: 'Raleway', sans-serif;
+}
+
+.login-card {
+  max-width: 400px;
+  width: 100%;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  font-family: 'Raleway', sans-serif;
+}
+
+.header-content {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-logo {
+  max-width: 120px;
+  height: auto;
+  margin-bottom: 16px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.login-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #4D5152;
+  margin-bottom: 8px;
+  font-family: 'Raleway', sans-serif;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.login-button {
+  height: 48px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-top: 8px;
+  position: relative;
+
+  .button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+.login-spinner {
+  margin-right: 8px;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.footer-version {
+  margin: 0;
+  color: #4D5152;
+  font-size: 0.8rem;
+  font-weight: 400;
+  font-family: 'Raleway', sans-serif;
+}
+
+// Estilo para snackbars
+::ng-deep .success-snackbar {
+  background-color: #A6D05F;
+  color: #4D5152;
+}
+
+::ng-deep .error-snackbar {
+  background-color: #f44336;
+  color: white;
+}
+
+// Responsividade
+@media (max-width: 480px) {
+  .login-card {
+    margin: 16px;
+    padding: 20px;
+  }
+
+  .login-title {
+    font-size: 1.8rem;
+  }
+}

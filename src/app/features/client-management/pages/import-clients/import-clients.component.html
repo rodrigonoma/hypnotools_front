@@ -1,0 +1,591 @@
+<div class="import-container">
+  <mat-card class="import-card">
+    <mat-card-header>
+      <div mat-card-avatar>
+        <mat-icon>upload_file</mat-icon>
+      </div>
+      <mat-card-title>Importar Clientes ManageClients</mat-card-title>
+      <mat-card-subtitle>
+        Faça upload de arquivos .xlsx ou .csv para importar clientes em lote
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Configuration Section -->
+      <div class="config-section">
+        <h3>Configurações</h3>
+        <div class="config-fields">
+          <mat-form-field appearance="outline" class="token-field">
+            <mat-label>Token da API</mat-label>
+            <input
+              matInput
+              [(ngModel)]="apiToken"
+              (ngModelChange)="onTokenChange()"
+              placeholder="Cole o token da API aqui"
+              type="password"
+            >
+            <mat-hint>Token obrigatório para autenticação na API ManageClients</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="batch-field">
+            <mat-label>Tamanho do lote</mat-label>
+            <input
+              matInput
+              [(ngModel)]="batchSize"
+              type="number"
+              min="1"
+              max="20"
+              placeholder="5"
+            >
+            <mat-hint>Número de clientes processados por vez (otimização de performance)</mat-hint>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Upload Section -->
+      <div class="upload-section">
+        <input
+          type="file"
+          id="fileInput"
+          accept=".xlsx,.xls,.csv"
+          (change)="onFileSelected($event)"
+          style="display: none"
+        />
+
+        <div class="file-upload-area" [class.has-file]="selectedFile">
+          <mat-icon>cloud_upload</mat-icon>
+          <p *ngIf="!selectedFile">Clique para selecionar um arquivo</p>
+          <p *ngIf="selectedFile" class="file-name">{{ selectedFile.name }}</p>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="triggerFileInput()"
+            [disabled]="isProcessing"
+          >
+            {{ selectedFile ? 'Trocar Arquivo' : 'Selecionar Arquivo' }}
+          </button>
+        </div>
+
+        <div class="action-buttons" *ngIf="selectedFile">
+          <button
+            mat-raised-button
+            color="accent"
+            (click)="processFile()"
+            [disabled]="isProcessing"
+          >
+            <mat-icon>analytics</mat-icon>
+            Processar Arquivo
+          </button>
+
+          <button
+            mat-stroked-button
+            (click)="resetAll()"
+            [disabled]="isProcessing"
+          >
+            <mat-icon>clear</mat-icon>
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Section -->
+      <div class="progress-section" *ngIf="isProcessing">
+        <h3>{{ progress.currentOperation }}</h3>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="progress.percentage"
+        ></mat-progress-bar>
+        <p class="progress-text">
+          {{ progress.current }} de {{ progress.total }} ({{ progress.percentage }}%)
+        </p>
+
+      </div>
+
+      <!-- Preview Section -->
+      <div class="preview-section" *ngIf="showPreview && !isProcessing">
+        <h3>Prévia dos Dados ({{ clients.length }} clientes)</h3>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <mat-card class="summary-card">
+            <mat-card-content>
+              <div class="summary-item">
+                <mat-icon>people</mat-icon>
+                <div>
+                  <div class="summary-number">{{ clients.length }}</div>
+                  <div class="summary-label">Clientes</div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="summary-card" *ngIf="references">
+            <mat-card-content>
+              <div class="summary-item">
+                <mat-icon>category</mat-icon>
+                <div>
+                  <div class="summary-number">{{ references.canalOrigem.length }}</div>
+                  <div class="summary-label">Canais</div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="summary-card" *ngIf="references">
+            <mat-card-content>
+              <div class="summary-item">
+                <mat-icon>campaign</mat-icon>
+                <div>
+                  <div class="summary-number">{{ references.midiasOrigem.length }}</div>
+                  <div class="summary-label">Mídias</div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <!-- Data Table -->
+        <div class="data-table">
+          <table mat-table [dataSource]="clients.slice(0, 10)" class="preview-table">
+            <ng-container matColumnDef="nome">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let client">{{ client.nome }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>Email</th>
+              <td mat-cell *matCellDef="let client">{{ client.email }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="telefone">
+              <th mat-header-cell *matHeaderCellDef>Telefone</th>
+              <td mat-cell *matCellDef="let client"
+                  [class.no-phone]="!hasValidPhone(client)">
+                {{ getClientPhone(client) }}
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="cidade">
+              <th mat-header-cell *matHeaderCellDef>Cidade</th>
+              <td mat-cell *matCellDef="let client">{{ client.cidade || 'N/A' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="canal_origem">
+              <th mat-header-cell *matHeaderCellDef>Canal</th>
+              <td mat-cell *matCellDef="let client">{{ getCanalOrigemNome(client) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Ações</th>
+              <td mat-cell *matCellDef="let client; let i = index">
+                <button
+                  mat-mini-fab
+                  color="primary"
+                  (click)="viewClientDetails(client, i)"
+                  matTooltip="Ver todos os detalhes que serão enviados"
+                >
+                  <mat-icon>visibility</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+
+          <p class="preview-note" *ngIf="clients.length > 10">
+            Mostrando os primeiros 10 registros de {{ clients.length }} clientes
+          </p>
+
+          <!-- Aviso sobre clientes sem telefone -->
+          <div class="phone-warning" *ngIf="getPhoneValidationMessage()">
+            <mat-icon>warning</mat-icon>
+            <span>{{ getPhoneValidationMessage() }}</span>
+          </div>
+
+          <!-- Aviso sobre clientes sem CPF -->
+          <div class="cpf-warning" *ngIf="getCpfValidationMessage()">
+            <mat-icon>warning</mat-icon>
+            <span>{{ getCpfValidationMessage() }}</span>
+          </div>
+        </div>
+
+        <!-- Client Details Section -->
+        <div class="client-details-section" *ngIf="selectedClientForPreview">
+          <mat-card class="client-details-card">
+            <mat-card-header>
+              <div mat-card-avatar>
+                <mat-icon>person</mat-icon>
+              </div>
+              <mat-card-title>Detalhes do Cliente {{ selectedClientIndex }}</mat-card-title>
+              <mat-card-subtitle>
+                Todos os campos que serão enviados para a API
+              </mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content>
+              <!-- Dados Pessoais -->
+              <mat-expansion-panel class="details-panel" expanded="true">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Dados Pessoais</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="details-grid">
+                  <div class="detail-item">
+                    <strong>Nome</strong>
+                    {{ selectedClientForPreview.nome || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Email Principal</strong>
+                    {{ selectedClientForPreview.email || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Email 2</strong>
+                    {{ selectedClientForPreview.email2 || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Email 3</strong>
+                    {{ selectedClientForPreview.email3 || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>CPF</strong>
+                    {{ selectedClientForPreview.cpf || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>RG</strong>
+                    {{ selectedClientForPreview.rg || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Sexo</strong>
+                    {{ selectedClientForPreview.sexo || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Data de Nascimento</strong>
+                    {{ selectedClientForPreview.data_nascimento || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Estado Civil</strong>
+                    {{ selectedClientForPreview.estado_civil || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Profissão</strong>
+                    {{ selectedClientForPreview.profissao || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Cargo</strong>
+                    {{ selectedClientForPreview.cargo || 'N/A' }}
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Dados de Contato -->
+              <mat-expansion-panel class="details-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Dados de Contato</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="details-grid">
+                  <div class="detail-item">
+                    <strong>Telefone Celular</strong>
+                    {{ (selectedClientForPreview.ddd_celular ? '(' + selectedClientForPreview.ddd_celular + ') ' : '') + (selectedClientForPreview.tel_celular || 'N/A') }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Telefone Comercial</strong>
+                    {{ (selectedClientForPreview.ddd_comercial ? '(' + selectedClientForPreview.ddd_comercial + ') ' : '') + (selectedClientForPreview.tel_comercial || 'N/A') }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Telefone Residencial</strong>
+                    {{ (selectedClientForPreview.ddd_residencial ? '(' + selectedClientForPreview.ddd_residencial + ') ' : '') + (selectedClientForPreview.tel_residencial || 'N/A') }}
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Endereço Residencial -->
+              <mat-expansion-panel class="details-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Endereço Residencial</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="details-grid">
+                  <div class="detail-item">
+                    <strong>Endereço</strong>
+                    {{ selectedClientForPreview.endereco || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Número</strong>
+                    {{ selectedClientForPreview.numero || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Complemento</strong>
+                    {{ selectedClientForPreview.complemento || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Bairro</strong>
+                    {{ selectedClientForPreview.bairro || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>CEP</strong>
+                    {{ selectedClientForPreview.cep || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Cidade</strong>
+                    {{ selectedClientForPreview.cidade || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>UF</strong>
+                    {{ selectedClientForPreview.UF || 'N/A' }}
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Endereço Comercial -->
+              <mat-expansion-panel class="details-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Endereço Comercial</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="details-grid">
+                  <div class="detail-item">
+                    <strong>Bairro Comercial</strong>
+                    {{ selectedClientForPreview.bairro_comercial || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>CEP Comercial</strong>
+                    {{ selectedClientForPreview.cep_comercial || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Cidade Comercial</strong>
+                    {{ selectedClientForPreview.cidade_comercial || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Complemento Comercial</strong>
+                    {{ selectedClientForPreview.complemento_comercial || 'N/A' }}
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Dados Financeiros -->
+              <mat-expansion-panel class="details-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Dados Financeiros</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="details-grid">
+                  <div class="detail-item">
+                    <strong>Renda Mensal</strong>
+                    {{ selectedClientForPreview.renda_mensal || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>FGTS</strong>
+                    {{ selectedClientForPreview.fgts || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Valor Entrada</strong>
+                    {{ selectedClientForPreview.valor_entrada || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Qtd. Dependentes</strong>
+                    {{ selectedClientForPreview.qtd_dependentes || 'N/A' }}
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Dados do Cônjuge -->
+              <mat-expansion-panel class="details-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Dados do Cônjuge</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="details-grid">
+                  <div class="detail-item">
+                    <strong>Data Nascimento Cônjuge</strong>
+                    {{ selectedClientForPreview.conjuge_dt_nascimento || 'N/A' }}
+                  </div>
+                  <div class="detail-item">
+                    <strong>Estado Civil Cônjuge</strong>
+                    {{ selectedClientForPreview.conjuge_estado_civil || 'N/A' }}
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Informações Técnicas -->
+              <mat-expansion-panel class="details-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Informações Técnicas da API</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="technical-info">
+                  <div class="details-grid">
+                    <div class="detail-item">
+                      <strong>ID Cliente Legado</strong>
+                      <small>{{ selectedClientForPreview.id_cliente_legado || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Usuário</strong>
+                      <small>{{ selectedClientForPreview.id_usuario || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Canal Origem</strong>
+                      <small>{{ selectedClientForPreview.id_canal_origem || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Mídia</strong>
+                      <small>{{ selectedClientForPreview.id_midia || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Momento</strong>
+                      <small>{{ selectedClientForPreview.id_momento || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Sub Momento</strong>
+                      <small>{{ selectedClientForPreview.id_submomento || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Temperatura</strong>
+                      <small>{{ selectedClientForPreview.id_temperatura || 'N/A' }}</small>
+                    </div>
+                    <div class="detail-item">
+                      <strong>ID Objetivo</strong>
+                      <small>{{ selectedClientForPreview.id_objetivo || 'N/A' }}</small>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 16px; padding: 12px; background-color: #37474f; border-radius: 6px;">
+                    <strong style="color: #00bcd4; display: block; margin-bottom: 8px;">URL da Requisição:</strong>
+                    <small style="color: #b0bec5; word-break: break-all;">{{ getPreviewUrl() }}</small>
+                  </div>
+
+                  <div style="margin-top: 12px; padding: 12px; background-color: #37474f; border-radius: 6px;">
+                    <strong style="color: #00bcd4; display: block; margin-bottom: 8px;">Parâmetros da Requisição:</strong>
+                    <small style="color: #b0bec5; word-break: break-all; font-family: monospace; line-height: 1.6;">{{ getPreviewParams(selectedClientForPreview) }}</small>
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <div style="text-align: center; margin-top: 24px;">
+                <button
+                  mat-raised-button
+                  color="accent"
+                  (click)="closeClientDetails()"
+                >
+                  <mat-icon>close</mat-icon>
+                  Fechar Detalhes
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <!-- Import Action -->
+        <div class="import-action">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="importClients()"
+            [disabled]="isProcessing || clients.length === 0 || !apiToken.trim()"
+          >
+            <mat-icon>cloud_upload</mat-icon>
+            Importar 10 Primeiros Clientes (Teste)
+          </button>
+          <p class="import-hint" *ngIf="!apiToken.trim()">
+            <mat-icon>warning</mat-icon>
+            Configure o token da API antes de importar
+          </p>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div class="results-section" *ngIf="importResult && !isProcessing">
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon [color]="importResult.success ? 'primary' : 'warn'">
+                {{ importResult.success ? 'check_circle' : 'error' }}
+              </mat-icon>
+              Resultado da Importação
+            </mat-panel-title>
+            <mat-panel-description>
+              {{ importResult.processedCount }} sucessos, {{ importResult.errorCount }} erros
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="result-summary">
+            <mat-chip-set>
+              <mat-chip color="primary">
+                <mat-icon>check</mat-icon>
+                {{ importResult.processedCount }} Sucessos
+              </mat-chip>
+              <mat-chip [color]="importResult.errorCount > 0 ? 'warn' : 'primary'">
+                <mat-icon>{{ importResult.errorCount > 0 ? 'error' : 'check' }}</mat-icon>
+                {{ importResult.errorCount }} Erros
+              </mat-chip>
+            </mat-chip-set>
+
+            <!-- Error Details -->
+            <div class="error-details" *ngIf="importResult.errors.length > 0">
+              <h4>Detalhes dos Erros</h4>
+
+              <div class="error-actions">
+                <button
+                  mat-stroked-button
+                  color="accent"
+                  (click)="downloadErrorReport()"
+                >
+                  <mat-icon>download</mat-icon>
+                  Baixar Relatório de Erros
+                </button>
+              </div>
+
+              <table mat-table [dataSource]="importResult.errors.slice(0, 5)" class="error-table">
+                <ng-container matColumnDef="row">
+                  <th mat-header-cell *matHeaderCellDef>Linha</th>
+                  <td mat-cell *matCellDef="let error">{{ error.row }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="field">
+                  <th mat-header-cell *matHeaderCellDef>Campo</th>
+                  <td mat-cell *matCellDef="let error">{{ error.field }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="message">
+                  <th mat-header-cell *matHeaderCellDef>Mensagem</th>
+                  <td mat-cell *matCellDef="let error">{{ error.message }}</td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="errorColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: errorColumns;"></tr>
+              </table>
+
+              <p class="error-note" *ngIf="importResult.errors.length > 5">
+                Mostrando os primeiros 5 erros de {{ importResult.errors.length }}
+              </p>
+            </div>
+          </div>
+        </mat-expansion-panel>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Help Section -->
+  <mat-card class="help-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>help</mat-icon>
+        Como usar
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <ol>
+        <li>Selecione um arquivo .xlsx ou .csv com os dados dos clientes</li>
+        <li>O arquivo deve conter as abas: CLIENTES, SUB MOMENTO, MOMENTO, MOTIVO DE NAO CLIENTE, MIDIAS DE ORIGEM, CANAL DE ORIGEM</li>
+        <li>Clique em "Processar Arquivo" para validar os dados</li>
+        <li>Revise a prévia dos dados importados</li>
+        <li>Clique em "Importar Clientes" para enviar para a API</li>
+      </ol>
+
+      <p><strong>Campos obrigatórios:</strong> Nome, Email, Token da API</p>
+      <p><strong>Processamento:</strong> Os dados são enviados em lotes configuráveis para otimizar a performance</p>
+      <p><strong>Token:</strong> Use o token fornecido pela API ManageClients. O token padrão é temporário para testes.</p>
+    </mat-card-content>
+  </mat-card>
+</div>

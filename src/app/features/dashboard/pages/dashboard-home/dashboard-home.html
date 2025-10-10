@@ -1,0 +1,88 @@
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1>HypnoTools Dashboard - TESTE ATUALIZADO</h1>
+    <p>Selecione uma ferramenta para começar</p>
+  </div>
+
+  <div class="tools-grid">
+    <!-- Client Management -->
+    <mat-card class="tool-card" [routerLink]="['/dashboard/import-clients']">
+      <mat-card-header>
+        <div mat-card-avatar class="tool-avatar client-management">
+          <mat-icon>people</mat-icon>
+        </div>
+        <mat-card-title>Importar Clientes</mat-card-title>
+        <mat-card-subtitle>ManageClients</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Faça upload de planilhas .xlsx ou .csv para importar clientes em lote para a API ManageClients.</p>
+        <div class="tool-features">
+          <mat-chip-set>
+            <mat-chip>Upload XLSX/CSV</mat-chip>
+            <mat-chip>Processamento em Lote</mat-chip>
+            <mat-chip>Mapeamento Automático</mat-chip>
+          </mat-chip-set>
+        </div>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-raised-button color="primary">
+          <mat-icon>launch</mat-icon>
+          Abrir
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- ERP Tools -->
+    <mat-card class="tool-card" [routerLink]="['/tools']">
+      <mat-card-header>
+        <div mat-card-avatar class="tool-avatar erp">
+          <mat-icon>business</mat-icon>
+        </div>
+        <mat-card-title>Ferramentas ERP</mat-card-title>
+        <mat-card-subtitle>Integração empresarial</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Conjunto de ferramentas para integração e gestão de dados empresariais.</p>
+        <div class="tool-features">
+          <mat-chip-set>
+            <mat-chip>Gestão de Dados</mat-chip>
+            <mat-chip>Integração</mat-chip>
+          </mat-chip-set>
+        </div>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-raised-button color="accent">
+          <mat-icon>launch</mat-icon>
+          Abrir
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Delete Clients -->
+    <mat-card class="tool-card" [routerLink]="['/clients/delete']">
+      <mat-card-header>
+        <div mat-card-avatar class="tool-avatar delete-clients">
+          <mat-icon>delete_forever</mat-icon>
+        </div>
+        <mat-card-title>Excluir Clientes</mat-card-title>
+        <mat-card-subtitle>Exclusão em Massa</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Exclusão controlada de clientes em massa com análise de dependências e logs de auditoria.</p>
+        <div class="tool-features">
+          <mat-chip-set>
+            <mat-chip>Upload Excel/IDs</mat-chip>
+            <mat-chip>Validação Prévia</mat-chip>
+            <mat-chip>Logs Detalhados</mat-chip>
+          </mat-chip-set>
+        </div>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-raised-button color="warn">
+          <mat-icon>launch</mat-icon>
+          Abrir
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

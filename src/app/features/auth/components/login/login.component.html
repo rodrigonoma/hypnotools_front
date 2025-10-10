@@ -1,0 +1,95 @@
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <div class="header-content">
+        <img src="https://jd.hypnobox.com.br/mobile/assets/img/logo-big.png"
+             alt="Hypnobox"
+             class="login-logo">
+        <mat-card-title class="login-title">HypnoTools</mat-card-title>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <!-- Seleção de Empresa -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Empresa</mat-label>
+          <mat-select formControlName="empresa" required>
+            <mat-option *ngFor="let empresa of empresasDisponiveis" [value]="empresa.value">
+              {{ empresa.name }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matSuffix>business</mat-icon>
+          <mat-error *ngIf="loginForm.get('empresa')?.invalid && loginForm.get('empresa')?.touched">
+            {{ getFieldErrorMessage('empresa') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Email -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email</mat-label>
+          <input matInput
+                 type="email"
+                 formControlName="email"
+                 placeholder="seu@email.com"
+                 autocomplete="email"
+                 required>
+          <mat-icon matSuffix>email</mat-icon>
+          <mat-error *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+            {{ getFieldErrorMessage('email') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Senha -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Senha</mat-label>
+          <input matInput
+                 [type]="hidePassword ? 'password' : 'text'"
+                 formControlName="password"
+                 placeholder="Digite sua senha"
+                 autocomplete="current-password"
+                 required>
+          <button mat-icon-button
+                  matSuffix
+                  type="button"
+                  (click)="hidePassword = !hidePassword"
+                  [attr.aria-label]="'Hide password'"
+                  [attr.aria-pressed]="hidePassword">
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-error *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+            {{ getFieldErrorMessage('password') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Botão de Login -->
+        <button mat-raised-button
+                color="primary"
+                type="submit"
+                class="login-button full-width"
+                [disabled]="loginForm.invalid || isLoading">
+
+          <mat-spinner *ngIf="isLoading"
+                       diameter="20"
+                       class="login-spinner">
+          </mat-spinner>
+
+          <span *ngIf="!isLoading" class="button-content">
+            <mat-icon>login</mat-icon>
+            Entrar
+          </span>
+          <span *ngIf="isLoading" class="button-content">
+            <mat-icon>hourglass_empty</mat-icon>
+            Entrando...
+          </span>
+        </button>
+      </form>
+    </mat-card-content>
+
+    <mat-card-footer class="login-footer">
+      <p class="footer-version">
+        v1.0.0 - HypnoTools
+      </p>
+    </mat-card-footer>
+  </mat-card>
+</div>

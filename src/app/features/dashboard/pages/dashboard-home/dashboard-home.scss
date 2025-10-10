@@ -1,0 +1,163 @@
+.dashboard-container {
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 48px;
+
+  h1 {
+    margin: 0 0 16px 0;
+    font-size: 2.5rem;
+    font-weight: 300;
+    color: #1976d2;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #666;
+  }
+}
+
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.tool-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  &.coming-soon {
+    opacity: 0.7;
+    cursor: default;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  .tool-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      color: white;
+    }
+
+    &.client-management {
+      background: linear-gradient(135deg, #1976d2, #42a5f5);
+    }
+
+    &.erp {
+      background: linear-gradient(135deg, #388e3c, #66bb6a);
+    }
+
+    &.delete-clients {
+      background: linear-gradient(135deg, #d32f2f, #f44336);
+    }
+
+    &.coming-soon {
+      background: linear-gradient(135deg, #757575, #9e9e9e);
+    }
+  }
+
+  mat-card-header {
+    padding: 24px 24px 16px 24px;
+
+    mat-card-title {
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    mat-card-subtitle {
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+  }
+
+  mat-card-content {
+    padding: 0 24px 16px 24px;
+
+    p {
+      margin: 0 0 16px 0;
+      line-height: 1.5;
+      color: #666;
+    }
+
+    .tool-features {
+      mat-chip-set {
+        margin: 0;
+
+        mat-chip {
+          font-size: 0.75rem;
+          padding: 4px 8px;
+          height: auto;
+          margin-right: 4px;
+          margin-bottom: 4px;
+        }
+      }
+    }
+  }
+
+  mat-card-actions {
+    padding: 16px 24px 24px 24px;
+
+    button {
+      min-width: 100px;
+
+      mat-icon {
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 16px;
+  }
+
+  .dashboard-header {
+    margin-bottom: 32px;
+
+    h1 {
+      font-size: 2rem;
+    }
+  }
+
+  .tools-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .tool-card {
+    mat-card-header,
+    mat-card-content,
+    mat-card-actions {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+  }
+}

@@ -1,0 +1,319 @@
+<div class="importar-container">
+  <!-- Header -->
+  <mat-toolbar color="primary" class="page-header">
+    <button mat-icon-button (click)="voltarDashboard()" matTooltip="Voltar ao Dashboard">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span class="page-title">Importar Produtos ERP</span>
+    <span class="spacer"></span>
+    <span class="empresa-info" *ngIf="empresa">
+      <mat-icon>business</mat-icon>
+      {{ empresa }}
+    </span>
+  </mat-toolbar>
+
+  <!-- Stepper de progresso -->
+  <mat-stepper orientation="horizontal" #stepper [selectedIndex]="currentStep - 1" class="progress-stepper">
+    <mat-step label="Selecionar Obra">
+      <mat-icon matStepperIcon>location_city</mat-icon>
+    </mat-step>
+    <mat-step label="Carregar Unidades">
+      <mat-icon matStepperIcon>home</mat-icon>
+    </mat-step>
+    <mat-step label="Confirmar Importação">
+      <mat-icon matStepperIcon>cloud_download</mat-icon>
+    </mat-step>
+  </mat-stepper>
+
+  <!-- Conteúdo principal -->
+  <div class="content-container">
+    <!-- Loading overlay -->
+    <div *ngIf="isLoading" class="loading-overlay">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Carregando dados do ERP...</p>
+    </div>
+
+    <!-- Etapa 1: Seleção de Obra -->
+    <div *ngIf="currentStep === 1" class="step-content">
+      <mat-card class="step-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>location_city</mat-icon>
+            Selecione a Obra para Importação
+          </mat-card-title>
+          <mat-card-subtitle>
+            Escolha qual obra do ERP deseja importar as unidades
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <!-- Filtros de busca -->
+          <div class="filter-section" *ngIf="obrasAtivas.length > 0">
+            <div class="filter-row">
+              <mat-form-field appearance="outline" class="search-field">
+                <mat-label>Pesquisar por nome</mat-label>
+                <input matInput
+                       [(ngModel)]="filtroNome"
+                       (input)="filtrarObras()"
+                       placeholder="Digite o nome da obra...">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="search-field">
+                <mat-label>Pesquisar por obra</mat-label>
+                <input matInput
+                       [(ngModel)]="filtroObra"
+                       (input)="filtrarObras()"
+                       placeholder="Digite o código da obra...">
+                <mat-icon matSuffix>business</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="search-field">
+                <mat-label>Pesquisar por empresa</mat-label>
+                <input matInput
+                       [(ngModel)]="filtroEmpresa"
+                       (input)="filtrarObras()"
+                       placeholder="Digite o código da empresa...">
+                <mat-icon matSuffix>domain</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="filter-info" *ngIf="filtroNome || filtroObra || filtroEmpresa">
+              <span>{{ obrasFiltradasCount }} de {{ obrasAtivas.length }} obras encontradas</span>
+              <button mat-button (click)="limparFiltros()" class="clear-filter">
+                <mat-icon>clear</mat-icon>
+                Limpar filtros
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="obrasAtivas.length === 0 && !isLoading" class="empty-state">
+            <mat-icon>info</mat-icon>
+            <p>Nenhuma obra ativa encontrada no ERP.</p>
+            <button mat-raised-button color="primary" (click)="carregarObrasAtivas()">
+              Recarregar
+            </button>
+          </div>
+
+          <!-- Estado quando não há obras após filtro -->
+          <div *ngIf="obrasAtivas.length > 0 && obrasFiltradasCount === 0 && (filtroNome || filtroObra || filtroEmpresa)" class="empty-state">
+            <mat-icon>search_off</mat-icon>
+            <p>Nenhuma obra encontrada com os filtros aplicados</p>
+            <button mat-button (click)="limparFiltros()">
+              <mat-icon>clear</mat-icon>
+              Limpar filtros
+            </button>
+          </div>
+
+          <div class="obras-grid" *ngIf="obrasFiltradasCount > 0">
+            <mat-card
+              *ngFor="let obra of obrasAtivas"
+              class="obra-card"
+              [style.display]="passaFiltros(obra) ? 'block' : 'none'"
+              (click)="selecionarObra(obra)">
+              <mat-card-header>
+                <mat-card-title>{{ obra.nomeObra }}</mat-card-title>
+                <mat-card-subtitle>Obra: {{ obra.codigoObra }} | Empresa: {{ obra.empresaObra }}</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="obra-info">
+                  <div class="info-item">
+                    <strong>Status:</strong>
+                    <span class="status" [ngClass]="obra.statusObra">{{ obra.statusObra }}</span>
+                  </div>
+                  <div class="info-item" *ngIf="obra.dataInicio">
+                    <strong>Data Início:</strong>
+                    <span>{{ obra.dataInicio | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                  <div class="info-item" *ngIf="obra.dataPrevisaoTermino">
+                    <strong>Previsão Término:</strong>
+                    <span>{{ obra.dataPrevisaoTermino | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                </div>
+              </mat-card-content>
+              <mat-card-actions align="end">
+                <button mat-button color="primary">
+                  Selecionar
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Etapa 2: Loading das unidades -->
+    <div *ngIf="currentStep === 2" class="step-content">
+      <mat-card class="step-card loading-card">
+        <mat-card-content class="loading-content">
+          <mat-spinner diameter="60"></mat-spinner>
+          <h3>Carregando unidades da obra</h3>
+          <p>{{ obraSelecionada?.nomeObra }}</p>
+          <p class="loading-text">Aguarde enquanto buscamos as unidades no ERP...</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Etapa 3: Seleção e importação de unidades -->
+    <div *ngIf="currentStep === 3" class="step-content">
+      <mat-card class="step-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>home</mat-icon>
+            Unidades da Obra: {{ obraSelecionada?.nomeObra }}
+          </mat-card-title>
+          <mat-card-subtitle>
+            Selecione as unidades que deseja importar para o sistema
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <!-- Campo ID do Produto -->
+          <div class="produto-id-section">
+            <mat-form-field appearance="outline" class="produto-id-field">
+              <mat-label>ID do Produto no TRS</mat-label>
+              <input
+                matInput
+                type="number"
+                [(ngModel)]="idProdutoManual"
+                placeholder="Digite o ID do produto..."
+                [value]="obraSelecionada?.idProduto || idProdutoManual">
+              <mat-icon matSuffix matTooltip="ID do produto na tabela tower_products do TRS">info</mat-icon>
+              <mat-hint *ngIf="obraSelecionada?.idProduto">
+                <mat-icon class="hint-icon">check_circle</mat-icon>
+                Produto já importado (ID: {{ obraSelecionada?.idProduto }})
+              </mat-hint>
+              <mat-hint *ngIf="!obraSelecionada?.idProduto && !idProdutoManual">
+                Informe o ID do produto para atualizar o ID externo das unidades
+              </mat-hint>
+            </mat-form-field>
+          </div>
+
+          <!-- Ações -->
+          <div class="espelho-actions">
+            <button mat-stroked-button (click)="voltarEtapa()" class="action-button">
+              <mat-icon>arrow_back</mat-icon>
+              Voltar
+            </button>
+
+            <div class="selection-controls">
+              <button mat-button (click)="masterToggle()" class="select-all-btn">
+                <mat-icon>{{ isAllSelected() ? 'deselect' : 'select_all' }}</mat-icon>
+                {{ isAllSelected() ? 'Desmarcar Todas' : 'Selecionar Todas' }}
+              </button>
+
+              <div class="selection-info">
+                <mat-icon>info</mat-icon>
+                <span>{{ selectionModel.selected.length }} de {{ unidadesDetalhadas.length }} selecionadas</span>
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <button
+                mat-raised-button
+                color="accent"
+                [disabled]="selectionModel.selected.length === 0 || isLoading"
+                (click)="atualizarIdExterno()"
+                class="update-button"
+                matTooltip="Atualizar apenas o ID externo das unidades selecionadas">
+                <mat-icon>sync</mat-icon>
+                Atualizar ID Externo ({{ selectionModel.selected.length }})
+              </button>
+
+              <button
+                mat-raised-button
+                color="primary"
+                [disabled]="selectionModel.selected.length === 0 || isLoading"
+                (click)="importarUnidades()"
+                class="import-button">
+                <mat-icon>cloud_download</mat-icon>
+                Importar Produto Completo ({{ selectionModel.selected.length }})
+              </button>
+            </div>
+          </div>
+
+          <!-- Espelho de Vendas - Grid de Unidades -->
+          <div class="espelho-container" *ngIf="unidadesDetalhadas.length > 0">
+            <div class="unidades-grid">
+              <div
+                *ngFor="let unidade of unidadesDetalhadas; trackBy: trackByUnidade"
+                class="unidade-card"
+                [class.selected]="selectionModel.isSelected(unidade)"
+                [class.disponivel]="(unidade.status ?? '').toLowerCase().includes('disponível')"
+                [class.vendida]="(unidade.status ?? '').toLowerCase().includes('vendida')"
+                [class.reservada]="(unidade.status ?? '').toLowerCase().includes('reservada')"
+                (click)="toggleUnidadeSelection(unidade)">
+
+                <!-- Header com checkbox e conteúdo -->
+                <div class="unidade-header">
+                  <div class="header-left">
+                    <h4 class="unidade-codigo">{{ unidade.codigoUnidade || 'N/A' }}</h4>
+                    <span class="unidade-status" [ngClass]="getStatusClass(unidade.status || '')">
+                      {{ unidade.status || 'Não informado' }}
+                    </span>
+                  </div>
+                  <mat-checkbox
+                    class="unidade-checkbox"
+                    [checked]="selectionModel.isSelected(unidade)"
+                    (click)="$event.stopPropagation()"
+                    (change)="$event ? selectionModel.toggle(unidade) : null">
+                  </mat-checkbox>
+                </div>
+
+                <div class="unidade-info">
+                  <div class="info-line" *ngIf="unidade.tipoUnidade && unidade.tipoUnidade !== 'Não informado'">
+                    <mat-icon class="info-icon">category</mat-icon>
+                    <span>{{ unidade.tipoUnidade }}</span>
+                  </div>
+
+                  <div class="info-line" *ngIf="unidade.andar">
+                    <mat-icon class="info-icon">layers</mat-icon>
+                    <span>{{ unidade.andar }}º andar</span>
+                  </div>
+
+                  <div class="info-line" *ngIf="unidade.areaPrivativa">
+                    <mat-icon class="info-icon">square_foot</mat-icon>
+                    <span>{{ formatarArea(unidade.areaPrivativa) }}</span>
+                  </div>
+
+                  <div class="info-line" *ngIf="unidade.areaTotal">
+                    <mat-icon class="info-icon">fullscreen</mat-icon>
+                    <span>{{ formatarArea(unidade.areaTotal) }} total</span>
+                  </div>
+
+                  <div class="info-line valor" *ngIf="unidade.valorVenda">
+                    <mat-icon class="info-icon">attach_money</mat-icon>
+                    <span class="valor-text">{{ formatarValor(unidade.valorVenda) }}</span>
+                  </div>
+
+                  <!-- Campos personalizados dinâmicos -->
+                  <div class="info-line" *ngFor="let campo of camposPersonalizados"
+                       [ngIf]="unidade[campo.campo] && unidade[campo.campo] !== '0' && unidade[campo.campo] !== '' && unidade[campo.campo] !== null">
+                    <mat-icon class="info-icon">info</mat-icon>
+                    <span>{{ campo.descricao }}: {{ unidade[campo.campo] }}</span>
+                  </div>
+                </div>
+
+                <!-- Indicador de seleção -->
+                <div class="selection-indicator" *ngIf="selectionModel.isSelected(unidade)">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estado vazio -->
+          <div *ngIf="unidadesDetalhadas.length === 0 && !isLoading" class="empty-state">
+            <mat-icon>home</mat-icon>
+            <p>Nenhuma unidade encontrada para esta obra.</p>
+            <button mat-stroked-button (click)="voltarEtapa()">
+              <mat-icon>arrow_back</mat-icon>
+              Escolher Outra Obra
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>
