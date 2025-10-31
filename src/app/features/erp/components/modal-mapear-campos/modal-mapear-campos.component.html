@@ -1,0 +1,627 @@
+<div class="modal-container">
+  <!-- Header -->
+  <div class="modal-header">
+    <h2 mat-dialog-title matTooltip="Configure como os dados do ERP serão importados para o TRS" matTooltipPosition="below">
+      <mat-icon>compare_arrows</mat-icon>
+      Mapear Campos para Importação
+    </h2>
+    <button
+      mat-icon-button
+      (click)="cancelar()"
+      class="close-button"
+      matTooltip="Cancelar e fechar"
+      matTooltipPosition="left">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Progress Stepper -->
+  <mat-stepper [selectedIndex]="etapaAtual - 1" class="stepper-header">
+    <mat-step label="Mapeamento de Campos">
+      <mat-icon matStepperIcon>compare_arrows</mat-icon>
+    </mat-step>
+    <mat-step label="Mapeamento de Status">
+      <mat-icon matStepperIcon>swap_horiz</mat-icon>
+    </mat-step>
+    <mat-step label="Confirmação">
+      <mat-icon matStepperIcon>check_circle</mat-icon>
+    </mat-step>
+  </mat-stepper>
+
+  <!-- Content -->
+  <mat-dialog-content class="modal-content">
+    <!-- Etapa 1: Mapeamento -->
+    <div *ngIf="etapaAtual === 1" class="etapa-mapeamento">
+      <!-- Informações da Obra -->
+      <mat-card class="info-card">
+        <mat-card-content>
+          <div class="info-row">
+            <mat-icon>business</mat-icon>
+            <span><strong>Obra:</strong> {{ data.obraNome }}</span>
+          </div>
+          <div class="info-row">
+            <mat-icon>home</mat-icon>
+            <span><strong>Unidades:</strong> {{ data.unidades.length }}</span>
+          </div>
+          <div class="info-row">
+            <mat-icon>apps</mat-icon>
+            <span><strong>Campos Disponíveis:</strong> {{ camposDisponiveis.length }}</span>
+          </div>
+          <div class="info-row" *ngIf="data.dataEntregaObra">
+            <mat-icon>event</mat-icon>
+            <span><strong>Data de Entrega:</strong> {{ data.dataEntregaObra | date:'dd/MM/yyyy' }} (da obra)</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Botão para Visualizar Dados do ERP -->
+      <button mat-raised-button
+              color="accent"
+              class="btn-visualizar-erp"
+              (click)="abrirVisualizadorDadosERP()">
+        <mat-icon>visibility</mat-icon>
+        Consultar Campos Disponíveis do ERP
+      </button>
+
+      <!-- Validação -->
+      <div class="validacao-section" *ngIf="!validacao.valido || validacao.avisos.length > 0">
+        <mat-card class="error-card" *ngIf="!validacao.valido">
+          <mat-card-content>
+            <div class="error-header">
+              <mat-icon>error</mat-icon>
+              <strong>Campos obrigatórios não mapeados ({{ validacao.camposFaltantes.length }})</strong>
+            </div>
+            <ul class="error-list">
+              <li *ngFor="let campo of validacao.camposFaltantes">{{ campo }}</li>
+            </ul>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="warning-card" *ngIf="validacao.avisos.length > 0">
+          <mat-card-content>
+            <div class="warning-header">
+              <mat-icon>warning</mat-icon>
+              <strong>Avisos</strong>
+            </div>
+            <ul class="warning-list">
+              <li *ngFor="let aviso of validacao.avisos">{{ aviso }}</li>
+            </ul>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Instruções -->
+      <div class="instrucoes">
+        <mat-icon matTooltip="Informações importantes sobre o mapeamento">info</mat-icon>
+        <p>
+          Mapeie os campos do ERP para os campos necessários no sistema TRS.
+          Campos marcados com <span class="obrigatorio-badge" matTooltip="Este campo deve ser preenchido obrigatoriamente">*</span> são obrigatórios.
+          Você pode selecionar um campo do ERP ou informar um valor fixo.
+        </p>
+      </div>
+
+      <!-- Configuração Avançada com Templates -->
+      <mat-card class="config-avancada-card">
+        <mat-card-header>
+          <mat-card-title>
+            <button
+              mat-button
+              (click)="mostrarConfigAvancada = !mostrarConfigAvancada"
+              class="toggle-config"
+              matTooltip="Use expressões regulares (Regex) para extrair partes específicas dos códigos das unidades. Exemplo: extrair andar e número de 'QUADRA 01 LOTE 02'"
+              matTooltipPosition="below"
+              [matTooltipShowDelay]="500">
+              <mat-icon>{{ mostrarConfigAvancada ? 'expand_less' : 'expand_more' }}</mat-icon>
+              ⚙️ Configuração Avançada - Templates com Regex
+              <span class="badge-novo" matTooltip="Recurso recém-adicionado!">NOVO</span>
+            </button>
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content *ngIf="mostrarConfigAvancada">
+          <div class="config-avancada-content">
+            <div class="alert-info">
+              <mat-icon>lightbulb</mat-icon>
+              <div>
+                <strong>Use templates para transformar valores automaticamente!</strong>
+                <p>Ex: "QUADRA 01 LOTE 02" pode virar "0102" usando templates &#123;1&#125;&#123;2&#125;</p>
+              </div>
+            </div>
+
+            <!-- Exemplo de unidade para testar -->
+            <div class="teste-exemplo">
+              <mat-form-field appearance="outline" class="exemplo-input">
+                <mat-label>📋 Exemplo de Unidade (para testar)</mat-label>
+                <input
+                  matInput
+                  [(ngModel)]="exemploUnidadeTeste"
+                  placeholder="Ex: QUADRA 01 LOTE 02">
+                <mat-hint>Digite um exemplo real da sua planilha</mat-hint>
+              </mat-form-field>
+
+              <button
+                mat-stroked-button
+                color="primary"
+                (click)="detectarPadraoAutomatico()"
+                [disabled]="!exemploUnidadeTeste">
+                <mat-icon>auto_fix_high</mat-icon>
+                Detectar Padrão Automaticamente
+              </button>
+            </div>
+
+            <!-- Padrões prontos -->
+            <div class="padroes-prontos" *ngIf="!templateConfig.patternExtracao">
+              <label><strong>Ou escolha um padrão pronto:</strong></label>
+              <div class="padroes-grid">
+                <button
+                  *ngFor="let padrao of padroesProntos"
+                  mat-raised-button
+                  (click)="aplicarPadraoPronto(padrao)"
+                  class="btn-padrao">
+                  {{ padrao.nome }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Configuração do Template -->
+            <div class="template-config" *ngIf="templateConfig.patternExtracao">
+              <div class="row">
+                <div class="col">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>🔍 Pattern de Extração (Regex)</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="templateConfig.patternExtracao"
+                      (ngModelChange)="testarTemplate()"
+                      placeholder="Ex: QUADRA\s+(\d+)\s+LOTE\s+(\d+)">
+                    <mat-hint>Use () para capturar grupos</mat-hint>
+                  </mat-form-field>
+
+                  <div class="templates-grid">
+                    <mat-form-field appearance="outline">
+                      <mat-label>🔑 Template unity_number</mat-label>
+                      <input
+                        matInput
+                        [(ngModel)]="templateConfig.unityNumberTemplate"
+                        (ngModelChange)="testarTemplate()"
+                        placeholder="Ex: &#123;1&#125;&#123;2&#125;">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>👁️ Template unity_number_custom</mat-label>
+                      <input
+                        matInput
+                        [(ngModel)]="templateConfig.unityNumberCustomTemplate"
+                        (ngModelChange)="testarTemplate()"
+                        placeholder="Ex: QUADRA &#123;1&#125; LOTE &#123;2&#125;">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>🏢 Template floor</mat-label>
+                      <input
+                        matInput
+                        [(ngModel)]="templateConfig.floorTemplate"
+                        (ngModelChange)="testarTemplate()"
+                        placeholder="Ex: &#123;1&#125;">
+                    </mat-form-field>
+                  </div>
+
+                  <div class="opcoes-transform">
+                    <mat-checkbox [(ngModel)]="templateConfig.removerEspacos" (ngModelChange)="testarTemplate()">
+                      Remover espaços
+                    </mat-checkbox>
+                    <mat-checkbox [(ngModel)]="templateConfig.removerZerosEsquerda" (ngModelChange)="testarTemplate()">
+                      Remover zeros à esquerda
+                    </mat-checkbox>
+                  </div>
+                </div>
+
+                <!-- Preview do Resultado -->
+                <div class="col preview-col">
+                  <div class="preview-resultado">
+                    <h4>📤 Preview do Resultado</h4>
+
+                    <div *ngIf="!resultadoTemplateTeste" class="preview-empty">
+                      <mat-icon>visibility_off</mat-icon>
+                      <p>Digite um exemplo para ver o resultado</p>
+                    </div>
+
+                    <div *ngIf="resultadoTemplateTeste && resultadoTemplateTeste.sucesso" class="preview-success">
+                      <div class="de-para-visual">
+                        <div class="de-box">
+                          <span class="label">📥 ORIGINAL</span>
+                          <div class="valor">{{ resultadoTemplateTeste.numeroOriginal }}</div>
+                        </div>
+
+                        <mat-icon class="seta">arrow_forward</mat-icon>
+
+                        <div class="para-box">
+                          <span class="label">📤 TRANSFORMADO</span>
+                          <div class="campo-resultado">
+                            <strong>unity_number:</strong>
+                            <code>{{ resultadoTemplateTeste.unityNumber }}</code>
+                          </div>
+                          <div class="campo-resultado">
+                            <strong>unity_number_custom:</strong>
+                            <code>{{ resultadoTemplateTeste.unityNumberCustom }}</code>
+                          </div>
+                          <div class="campo-resultado">
+                            <strong>floor:</strong>
+                            <code>{{ resultadoTemplateTeste.floor }}</code>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="grupos-capturados" *ngIf="resultadoTemplateTeste.gruposCapturados.length > 0">
+                        <small>
+                          <strong>Grupos capturados:</strong>
+                          <span *ngFor="let grupo of resultadoTemplateTeste.gruposCapturados; let i = index">
+                            <span [innerHTML]="getGrupoCapturadoHtml(i + 1, grupo)"></span>{{ i < resultadoTemplateTeste.gruposCapturados.length - 1 ? ', ' : '' }}
+                          </span>
+                        </small>
+                      </div>
+
+                      <div class="acoes-template">
+                        <button
+                          mat-raised-button
+                          color="primary"
+                          (click)="aplicarTemplateTodos()"
+                          [disabled]="!resultadoTemplateTeste.sucesso">
+                          <mat-icon>check_circle</mat-icon>
+                          Aplicar este Template aos Campos
+                        </button>
+                        <button
+                          mat-button
+                          (click)="limparTemplate()">
+                          <mat-icon>close</mat-icon>
+                          Limpar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div *ngIf="resultadoTemplateTeste && !resultadoTemplateTeste.sucesso" class="preview-erro">
+                      <mat-icon>error</mat-icon>
+                      <p><strong>Erro:</strong> {{ resultadoTemplateTeste.erro }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Mapeamentos por categoria -->
+      <div class="mapeamentos-container">
+        <mat-accordion>
+          <mat-expansion-panel
+            *ngFor="let categoria of ['torre', 'tipologia', 'unidade', 'propriedade']"
+            [expanded]="categoria === 'torre'"
+            class="categoria-panel">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <mat-icon>{{ getIconeCategoria(categoria) }}</mat-icon>
+                <span>{{ getLabelCategoria(categoria) }}</span>
+              </mat-panel-title>
+              <mat-panel-description>
+                {{ getQuantidadeCamposCategoria(categoria) }} campos
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <div class="mapeamentos-list">
+              <ng-container *ngFor="let mapeamento of getMapeamentosCategoria(categoria)">
+              <div
+                class="mapeamento-row"
+                [class.mapeado]="mapeamento.campoERP || mapeamento.usarValorPadrao">
+
+                <div class="campo-destino">
+                  <span class="campo-label">
+                    {{ getDescricaoCampo(mapeamento.campoObrigatorio) }}
+                    <span class="obrigatorio-badge" *ngIf="isCampoObrigatorio(mapeamento.campoObrigatorio)">*</span>
+                    <mat-icon
+                      *ngIf="getTooltipCampo(mapeamento.campoObrigatorio)"
+                      class="info-icon"
+                      [matTooltip]="getTooltipCampo(mapeamento.campoObrigatorio)"
+                      matTooltipPosition="right">
+                      info
+                    </mat-icon>
+                  </span>
+                  <span class="campo-exemplo">Ex: {{ getExemploValor(mapeamento) }}</span>
+                </div>
+
+                <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+
+                <div class="campo-origem">
+                  <!-- Seleção de campo do ERP -->
+                  <mat-form-field appearance="outline" class="campo-select">
+                    <mat-label>Campo do ERP</mat-label>
+                    <mat-select
+                      [(ngModel)]="mapeamento.campoERP"
+                      (selectionChange)="onMapeamentoChange(mapeamento)"
+                      [disabled]="!!mapeamento.usarValorPadrao">
+                      <mat-option [value]="null">Nenhum</mat-option>
+                      <mat-option *ngFor="let campo of camposDisponiveis" [value]="campo">
+                        {{ campo }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <span class="ou-divider">OU</span>
+
+                  <!-- Valor fixo/manual -->
+                  <mat-form-field appearance="outline" class="valor-fixo">
+                    <mat-label>Valor Fixo</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="mapeamento.valorManual"
+                      (input)="onValorManualChange(mapeamento)"
+                      [disabled]="!!mapeamento.campoERP"
+                      placeholder="Informar valor...">
+                    <mat-icon matSuffix matTooltip="Usar valor fixo para todas as unidades">lock</mat-icon>
+                  </mat-form-field>
+                </div>
+              </div>
+              </ng-container>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+    </div>
+
+    <!-- Etapa 2: Mapeamento de Status -->
+    <div *ngIf="etapaAtual === 2" class="etapa-status">
+      <div class="status-header">
+        <mat-icon class="header-icon">swap_horiz</mat-icon>
+        <div class="header-text">
+          <h3>Mapeamento de Status</h3>
+          <p>Configure como os status do ERP serão convertidos para os status do TRS</p>
+        </div>
+      </div>
+
+      <div class="status-info-card">
+        <mat-icon class="info-icon-large">info</mat-icon>
+        <div>
+          <p class="info-title">Por que mapear status?</p>
+          <p class="info-description">
+            Os status das unidades no ERP podem ter nomes diferentes dos status no sistema TRS.
+            Aqui você define a correspondência entre eles para garantir que as unidades sejam importadas
+            com o status correto.
+          </p>
+        </div>
+      </div>
+
+      <mat-card class="status-summary-card">
+        <mat-card-content>
+          <div class="summary-item">
+            <mat-icon>label</mat-icon>
+            <span><strong>Status diferentes encontrados:</strong> {{ statusERPUnicos.length }}</span>
+          </div>
+          <div class="summary-item">
+            <mat-icon>check_circle</mat-icon>
+            <span><strong>Status disponíveis no TRS:</strong> {{ statusTRSDisponiveis.length }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div class="status-mappings-container">
+        <h4 class="section-title">
+          <mat-icon>compare_arrows</mat-icon>
+          Configure o Mapeamento
+        </h4>
+
+        <div class="status-mappings-list" *ngIf="statusERPUnicos.length > 0; else noStatus">
+          <div *ngFor="let statusERP of statusERPUnicos; let i = index"
+               class="status-mapping-item"
+               [@slideIn]>
+            <div class="mapping-number">{{ i + 1 }}</div>
+
+            <div class="status-erp">
+              <mat-icon class="status-icon">label</mat-icon>
+              <span class="status-name">{{ statusERP }}</span>
+              <span class="badge badge-erp">ERP</span>
+            </div>
+
+            <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+
+            <mat-form-field class="status-trs-select" appearance="outline">
+              <mat-label>Status no TRS</mat-label>
+              <mat-select
+                [value]="obterStatusTRSIdMapeado(statusERP)"
+                (selectionChange)="atualizarMapeamentoStatus(statusERP, $event.value)"
+                [disabled]="carregandoStatus"
+                matTooltip="Selecione qual status do TRS corresponde a '{{ statusERP }}'"
+                matTooltipPosition="above">
+                <mat-option
+                  *ngFor="let statusTRS of statusTRSDisponiveis"
+                  [value]="statusTRS.id">
+                  <mat-icon class="option-icon">fiber_manual_record</mat-icon>
+                  {{ statusTRS.nome }}
+                </mat-option>
+              </mat-select>
+              <mat-hint *ngIf="carregandoStatus">
+                <mat-spinner diameter="16"></mat-spinner>
+                Carregando opções...
+              </mat-hint>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <ng-template #noStatus>
+          <div class="no-status-message">
+            <mat-icon>info</mat-icon>
+            <p>Nenhum status foi encontrado nas unidades do ERP.</p>
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="status-legend-section">
+        <h4 class="legend-title">
+          <mat-icon>help_outline</mat-icon>
+          Status Disponíveis no TRS
+        </h4>
+        <div class="legend-items">
+          <div
+            *ngFor="let status of statusTRSDisponiveis"
+            class="legend-item"
+            [matTooltip]="status.descricao"
+            matTooltipPosition="above">
+            <mat-icon class="legend-icon">fiber_manual_record</mat-icon>
+            <span class="legend-name">{{ status.nome }}</span>
+            <span class="legend-id">ID: {{ status.id }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Etapa 3: Confirmação -->
+    <div *ngIf="etapaAtual === 3" class="etapa-confirmacao">
+      <div class="confirmacao-header">
+        <mat-icon class="success-icon">check_circle</mat-icon>
+        <h3>Mapeamento Concluído!</h3>
+        <p>Revise as informações antes de confirmar a importação</p>
+      </div>
+
+      <!-- Resumo -->
+      <mat-card class="resumo-card">
+        <mat-card-header>
+          <mat-card-title>Resumo da Importação</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="resumo-grid">
+            <div class="resumo-item">
+              <mat-icon>business</mat-icon>
+              <div>
+                <strong>Obra</strong>
+                <span>{{ data.obraNome }}</span>
+              </div>
+            </div>
+            <div class="resumo-item">
+              <mat-icon>home</mat-icon>
+              <div>
+                <strong>Unidades</strong>
+                <span>{{ data.unidades.length }} unidades</span>
+              </div>
+            </div>
+            <div class="resumo-item">
+              <mat-icon>check_circle</mat-icon>
+              <div>
+                <strong>Campos Mapeados</strong>
+                <span>{{ getQuantidadeMapeados() }} campos</span>
+              </div>
+            </div>
+            <div class="resumo-item">
+              <mat-icon>cloud_upload</mat-icon>
+              <div>
+                <strong>Produto TRS</strong>
+                <span>ID: {{ data.idProduto }}</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Preview de Mapeamentos -->
+      <mat-card class="preview-card">
+        <mat-card-header>
+          <mat-card-title>Campos Mapeados</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="preview-list">
+            <div
+              *ngFor="let mapeamento of mapeamentos"
+              class="preview-item"
+              [class.opcional]="!isCampoObrigatorio(mapeamento.campoObrigatorio)">
+              <div class="preview-campo" *ngIf="mapeamento.campoERP || mapeamento.usarValorPadrao">
+                <mat-icon [class.obrigatorio]="isCampoObrigatorio(mapeamento.campoObrigatorio)">
+                  {{ isCampoObrigatorio(mapeamento.campoObrigatorio) ? 'check_circle' : 'radio_button_unchecked' }}
+                </mat-icon>
+                <div class="preview-info">
+                  <strong>{{ getDescricaoCampo(mapeamento.campoObrigatorio) }}</strong>
+                  <span class="preview-origem">
+                    <mat-icon>arrow_back</mat-icon>
+                    {{ mapeamento.campoERP || ('Valor fixo: ' + mapeamento.valorManual) }}
+                  </span>
+                </div>
+                <span class="preview-categoria">{{ getCategoriaCampo(mapeamento.campoObrigatorio) }}</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Aviso final -->
+      <mat-card class="aviso-card">
+        <mat-card-content>
+          <mat-icon>info</mat-icon>
+          <div class="aviso-texto">
+            <strong>Atenção:</strong>
+            <p>Esta ação irá criar/atualizar a estrutura completa do produto no sistema TRS,
+               incluindo torres, tipologias, propriedades e unidades. Certifique-se de que
+               o mapeamento está correto antes de confirmar.</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Loading overlay -->
+    <div *ngIf="processando" class="loading-overlay">
+      <mat-spinner diameter="60"></mat-spinner>
+      <p>Processando importação...</p>
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    </div>
+  </mat-dialog-content>
+
+  <!-- Actions -->
+  <mat-dialog-actions class="modal-actions">
+    <!-- Etapa 1: Mapeamento de Campos -->
+    <div *ngIf="etapaAtual === 1" class="actions-row">
+      <button mat-stroked-button (click)="cancelar()" [disabled]="processando">
+        <mat-icon>close</mat-icon>
+        Cancelar
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="avancarParaStatus()"
+        [disabled]="!validacao.valido || processando"
+        matTooltip="Avançar para mapeamento de status">
+        Próximo: Status
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+    </div>
+
+    <!-- Etapa 2: Mapeamento de Status -->
+    <div *ngIf="etapaAtual === 2" class="actions-row">
+      <button mat-stroked-button (click)="voltarParaMapeamento()" [disabled]="processando">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="avancarParaConfirmacao()"
+        [disabled]="processando"
+        matTooltip="Avançar para confirmação">
+        Próximo: Confirmação
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+    </div>
+
+    <!-- Etapa 3: Confirmação -->
+    <div *ngIf="etapaAtual === 3" class="actions-row">
+      <button mat-stroked-button (click)="voltarParaStatus()" [disabled]="processando">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="confirmarImportacao()"
+        [disabled]="processando"
+        matTooltip="Confirmar e iniciar importação">
+        <mat-icon>cloud_upload</mat-icon>
+        Confirmar Importação
+      </button>
+    </div>
+  </mat-dialog-actions>
+</div>

@@ -31,6 +31,7 @@ export interface ObraAtivaModel {
   statusObra: string;
   dataInicio?: Date;
   dataPrevisaoTermino?: Date;
+  dtfim_obr?: string; // Data de término da obra (formato do ERP)
   idProduto?: number; // ID do produto no sistema Transacional (tower products)
 }
 
@@ -60,6 +61,7 @@ export interface AtualizarIdExternoUnidade {
 
 export interface AtualizarIdExternoRequest {
   idProduto: number;
+  codigoObra: string;
   unidades: AtualizarIdExternoUnidade[];
 }
 
@@ -105,8 +107,17 @@ export class ErpService {
     return this.http.get<CampoPersonalizadoModel[]>(`${this.apiUrl}/campos-personalizados/${empresa}/${codigoObra}`);
   }
 
-  atualizarIdExterno(request: AtualizarIdExternoRequest): Observable<AtualizarIdExternoResponse> {
+  atualizarIdExterno(
+    idProduto: number,
+    codigoObra: string,
+    unidades: AtualizarIdExternoUnidade[]
+  ): Observable<AtualizarIdExternoResponse> {
     const unidadeApiUrl = `${environment.apiUrl}/api/unidade`;
+    const request: AtualizarIdExternoRequest = {
+      idProduto: idProduto,
+      codigoObra: codigoObra,
+      unidades: unidades
+    };
     return this.http.post<AtualizarIdExternoResponse>(`${unidadeApiUrl}/atualizar-id-externo`, request);
   }
 }

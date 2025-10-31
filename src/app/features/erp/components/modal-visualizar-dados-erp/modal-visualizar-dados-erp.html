@@ -1,0 +1,203 @@
+<div class="modal-viewer-container">
+  <!-- Header -->
+  <div class="modal-header">
+    <div class="header-content">
+      <mat-icon class="header-icon">visibility</mat-icon>
+      <div class="header-text">
+        <h2>Dados do ERP</h2>
+        <p>Consulte os campos disponíveis para mapeamento</p>
+      </div>
+    </div>
+    <button mat-icon-button (click)="fechar()" class="close-button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Filtro e Estatísticas -->
+  <div class="toolbar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Buscar campo ou valor</mat-label>
+      <input matInput [(ngModel)]="filtro" (ngModelChange)="aplicarFiltro()" placeholder="Digite para filtrar...">
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+
+    <div class="stats">
+      <mat-chip class="stat-chip basico">
+        <mat-icon>star</mat-icon>
+        Básicos: {{ camposBasicos.length }}
+      </mat-chip>
+      <mat-chip class="stat-chip personalizado">
+        <mat-icon>extension</mat-icon>
+        Personalizados: {{ camposPersonalizados.length }}
+      </mat-chip>
+      <mat-chip class="stat-chip sistema">
+        <mat-icon>settings</mat-icon>
+        Sistema: {{ camposSistema.length }}
+      </mat-chip>
+    </div>
+  </div>
+
+  <!-- Content com Tabs -->
+  <mat-dialog-content class="modal-content">
+    <mat-tab-group animationDuration="300ms" class="tabs-container">
+
+      <!-- Tab: Todos -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>list</mat-icon>
+          Todos ({{ camposFiltrados.length }})
+        </ng-template>
+
+        <div class="campos-container">
+          <div class="campo-card" *ngFor="let campo of camposFiltrados"
+               [class]="'categoria-' + campo.categoria">
+            <div class="campo-header">
+              <div class="campo-info">
+                <mat-icon [style.color]="getCorCategoria(campo.categoria)">
+                  {{ getIconeCategoria(campo.categoria) }}
+                </mat-icon>
+                <div class="campo-nome-grupo">
+                  <strong class="campo-nome">{{ campo.nome }}</strong>
+                  <span class="campo-label" *ngIf="campo.label">{{ campo.label }}</span>
+                </div>
+              </div>
+              <button mat-icon-button
+                      (click)="copiarNomeCampo(campo.nome)"
+                      matTooltip="Copiar nome do campo"
+                      class="copy-button">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            <div class="campo-valor">{{ formatarValor(campo.valor) }}</div>
+          </div>
+
+          <div class="empty-state" *ngIf="camposFiltrados.length === 0">
+            <mat-icon>search_off</mat-icon>
+            <p>Nenhum campo encontrado</p>
+            <small>Tente ajustar o filtro de busca</small>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Tab: Campos Básicos -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>star</mat-icon>
+          Básicos ({{ camposBasicos.length }})
+        </ng-template>
+
+        <div class="campos-container">
+          <div class="info-banner basico">
+            <mat-icon>info</mat-icon>
+            <span>Campos principais da unidade (código, nome, valor, status, etc)</span>
+          </div>
+
+          <div class="campo-card categoria-basico" *ngFor="let campo of camposBasicos">
+            <div class="campo-header">
+              <div class="campo-info">
+                <mat-icon [style.color]="getCorCategoria(campo.categoria)">
+                  {{ getIconeCategoria(campo.categoria) }}
+                </mat-icon>
+                <strong class="campo-nome">{{ campo.nome }}</strong>
+              </div>
+              <button mat-icon-button
+                      (click)="copiarNomeCampo(campo.nome)"
+                      matTooltip="Copiar nome do campo"
+                      class="copy-button">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            <div class="campo-valor">{{ formatarValor(campo.valor) }}</div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Tab: Campos Personalizados -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>extension</mat-icon>
+          Personalizados ({{ camposPersonalizados.length }})
+        </ng-template>
+
+        <div class="campos-container">
+          <div class="info-banner personalizado">
+            <mat-icon>info</mat-icon>
+            <span>Campos customizáveis do ERP (c1_unid até c45_unid). Use estes para mapear área, fração ideal, etc.</span>
+          </div>
+
+          <div class="campo-card categoria-personalizado" *ngFor="let campo of camposPersonalizados">
+            <div class="campo-header">
+              <div class="campo-info">
+                <mat-icon [style.color]="getCorCategoria(campo.categoria)">
+                  {{ getIconeCategoria(campo.categoria) }}
+                </mat-icon>
+                <div class="campo-nome-grupo">
+                  <strong class="campo-nome">{{ campo.nome }}</strong>
+                  <span class="campo-label" *ngIf="campo.label">{{ campo.label }}</span>
+                </div>
+              </div>
+              <button mat-icon-button
+                      (click)="copiarNomeCampo(campo.nome)"
+                      matTooltip="Copiar nome do campo"
+                      class="copy-button">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            <div class="campo-valor">{{ formatarValor(campo.valor) }}</div>
+          </div>
+
+          <div class="empty-state" *ngIf="camposPersonalizados.length === 0">
+            <mat-icon>extension_off</mat-icon>
+            <p>Nenhum campo personalizado com valor</p>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Tab: Campos do Sistema -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon>settings</mat-icon>
+          Sistema ({{ camposSistema.length }})
+        </ng-template>
+
+        <div class="campos-container">
+          <div class="info-banner sistema">
+            <mat-icon>info</mat-icon>
+            <span>Campos internos do sistema ERP</span>
+          </div>
+
+          <div class="campo-card categoria-sistema" *ngFor="let campo of camposSistema">
+            <div class="campo-header">
+              <div class="campo-info">
+                <mat-icon [style.color]="getCorCategoria(campo.categoria)">
+                  {{ getIconeCategoria(campo.categoria) }}
+                </mat-icon>
+                <strong class="campo-nome">{{ campo.nome }}</strong>
+              </div>
+              <button mat-icon-button
+                      (click)="copiarNomeCampo(campo.nome)"
+                      matTooltip="Copiar nome do campo"
+                      class="copy-button">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            <div class="campo-valor">{{ formatarValor(campo.valor) }}</div>
+          </div>
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+  </mat-dialog-content>
+
+  <!-- Footer -->
+  <mat-dialog-actions class="modal-actions">
+    <div class="help-text">
+      <mat-icon>lightbulb</mat-icon>
+      <span>Clique no ícone de copiar para copiar o nome do campo</span>
+    </div>
+    <button mat-raised-button color="primary" (click)="fechar()">
+      <mat-icon>check</mat-icon>
+      Entendi
+    </button>
+  </mat-dialog-actions>
+</div>

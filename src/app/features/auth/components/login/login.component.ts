@@ -43,7 +43,8 @@ export class LoginComponent implements OnInit {
     { value: 'wvmaldi', name: 'Wvmaldi' },
     { value: 'markaprime', name: 'Markaprime' },
     { value: 'yonder', name: 'Yonder' },
-    { value: 'catuai', name: 'Catuai' }
+    { value: 'catuai', name: 'Catuai' },
+    { value: 'umavendas', name: 'Umavendas' }
   ];
 
   constructor(

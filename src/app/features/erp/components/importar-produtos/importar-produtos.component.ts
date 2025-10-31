@@ -15,11 +15,14 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SelectionModel } from '@angular/cdk/collections';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ErpService, ObraAtivaModel, UnidadeDetalhadaModel, CampoPersonalizadoModel } from '../../../../core/services/erp.service';
 import { ImportacaoProdutoService, ImportacaoERPRequest } from '../../../../core/services/importacao-produto.service';
+import { ModalMapearCamposComponent } from '../modal-mapear-campos/modal-mapear-campos.component';
+import { ImportacaoProdutoService as ImportacaoEstruturaService } from '../../services/importacao-produto.service';
 
 @Component({
   selector: 'app-importar-produtos',
@@ -38,7 +41,8 @@ import { ImportacaoProdutoService, ImportacaoERPRequest } from '../../../../core
     MatCheckboxModule,
     MatTooltipModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    ScrollingModule
   ],
   templateUrl: './importar-produtos.component.html',
   styleUrls: ['./importar-produtos.component.scss']
@@ -53,7 +57,12 @@ export class ImportarProdutosComponent implements OnInit {
   obrasAtivas: ObraAtivaModel[] = [];
   obraSelecionada: ObraAtivaModel | null = null;
   unidadesDetalhadas: UnidadeDetalhadaModel[] = [];
+  unidadesExibidas: UnidadeDetalhadaModel[] = [];
   camposPersonalizados: CampoPersonalizadoModel[] = [];
+
+  // Paginação para renderização
+  batchSize = 50; // Renderizar 50 cards por vez
+  currentBatch = 1;
 
   // ID do produto para atualização
   idProdutoManual: number | null = null;
@@ -84,6 +93,7 @@ export class ImportarProdutosComponent implements OnInit {
     private authService: AuthService,
     private erpService: ErpService,
     private importacaoService: ImportacaoProdutoService,
+    private importacaoEstruturaService: ImportacaoEstruturaService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private router: Router
@@ -159,9 +169,31 @@ export class ImportarProdutosComponent implements OnInit {
         this.camposPersonalizados = campos;
         this.selectionModel.clear();
         this.isLoading = false;
-        this.currentStep = 3;
 
-        console.log('Campos personalizados carregados:', campos);
+        // Se não há campos do BuscaCamposPerson, usar detecção automática dos campos das unidades
+        if ((!campos || campos.length === 0) && unidades.length > 0) {
+          const todasChaves = Object.keys(unidades[0]);
+          const camposC = todasChaves.filter(key => /^c\d+_unid$/i.test(key));
+
+          if (camposC.length > 0) {
+            // Criar campos personalizados automaticamente
+            this.camposPersonalizados = camposC
+              .sort((a, b) => {
+                const numA = parseInt(a.match(/\d+/)?.[0] || '0');
+                const numB = parseInt(b.match(/\d+/)?.[0] || '0');
+                return numA - numB;
+              })
+              .map(campo => ({
+                campo: campo,
+                descricao: campo.replace(/_unid$/i, '').toUpperCase()
+              }));
+          }
+        }
+
+        // Renderizar primeiro lote de unidades
+        this.currentBatch = 1;
+        this.carregarMaisUnidades();
+        this.currentStep = 3;
 
         if (unidades.length === 0) {
           this.snackBar.open('Nenhuma unidade encontrada para esta obra.', 'Fechar', {
@@ -181,6 +213,26 @@ export class ImportarProdutosComponent implements OnInit {
     });
   }
 
+  // Método para carregar mais unidades (paginação)
+  carregarMaisUnidades(): void {
+    const startIndex = 0;
+    const endIndex = this.currentBatch * this.batchSize;
+    this.unidadesExibidas = this.unidadesDetalhadas.slice(startIndex, endIndex);
+  }
+
+  // Método chamado ao fazer scroll
+  onScroll(event: any): void {
+    const element = event.target;
+    const threshold = 200; // pixels do final
+    const position = element.scrollTop + element.offsetHeight;
+    const height = element.scrollHeight;
+
+    if (position > height - threshold && this.unidadesExibidas.length < this.unidadesDetalhadas.length) {
+      this.currentBatch++;
+      this.carregarMaisUnidades();
+    }
+  }
+
   // Métodos de seleção da tabela
   isAllSelected(): boolean {
     const numSelected = this.selectionModel.selected.length;
@@ -194,6 +246,9 @@ export class ImportarProdutosComponent implements OnInit {
       this.unidadesDetalhadas.forEach(row => this.selectionModel.select(row));
   }
 
+  /**
+   * Abre modal de mapeamento e importa estrutura completa
+   */
   importarUnidades(): void {
     if (!this.empresa || !this.obraSelecionada || this.selectionModel.selected.length === 0) {
       this.snackBar.open('Selecione pelo menos uma unidade para importar.', 'Fechar', {
@@ -203,21 +258,91 @@ export class ImportarProdutosComponent implements OnInit {
       return;
     }
 
+    // Verificar se foi informado um ID de produto
+    const idProduto = this.idProdutoManual || this.obraSelecionada.idProduto;
+
+    if (!idProduto || idProduto <= 0) {
+      this.snackBar.open('Informe o ID do Produto no campo abaixo para importar.', 'Fechar', {
+        duration: 5000,
+        panelClass: ['warning-snackbar']
+      });
+      return;
+    }
+
+    // Abrir modal de mapeamento
+    const dialogRef = this.dialog.open(ModalMapearCamposComponent, {
+      width: '95vw',
+      maxWidth: '1200px',
+      maxHeight: '95vh',
+      disableClose: false,
+      data: {
+        idProduto: idProduto,
+        obraId: this.obraSelecionada.codigoObra,
+        obraNome: this.obraSelecionada.nomeObra,
+        dataEntregaObra: this.obraSelecionada.dtfim_obr, // Data de término da obra
+        unidades: this.selectionModel.selected,
+        camposPersonalizados: this.camposPersonalizados
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && result.sucesso) {
+        // Processar importação com os mapeamentos
+        this.processarImportacaoComMapeamento(
+          idProduto,
+          this.obraSelecionada!.codigoObra,
+          this.obraSelecionada!.nomeObra,
+          this.obraSelecionada!.dtfim_obr,
+          result.unidades,
+          result.mapeamentos,
+          result.mapeamentosStatus || []
+        );
+      }
+    });
+  }
+
+  /**
+   * Processa importação com os mapeamentos configurados
+   */
+  private processarImportacaoComMapeamento(
+    idProduto: number,
+    obraId: string,
+    obraNome: string,
+    dataEntregaObra: string | undefined,
+    unidades: UnidadeDetalhadaModel[],
+    mapeamentos: any[],
+    mapeamentosStatus: any[]
+  ): void {
     this.isLoading = true;
 
-    const request: ImportacaoERPRequest = {
-      empresa: this.empresa,
-      codigoObra: this.obraSelecionada.codigoObra,
-      unidades: this.selectionModel.selected
-    };
+    // Exibir mensagem de feedback para grandes volumes
+    if (unidades.length > 500) {
+      this.snackBar.open(
+        `Processando ${unidades.length} unidades... Isso pode levar alguns minutos. Por favor, aguarde.`,
+        '',
+        {
+          duration: 0, // Não fecha automaticamente
+          panelClass: ['info-snackbar']
+        }
+      );
+    }
 
-    this.importacaoService.importarProdutoERP(request).subscribe({
+    this.importacaoEstruturaService.importarEstruturaProduto(
+      idProduto,
+      obraId,
+      obraNome,
+      dataEntregaObra,
+      unidades,
+      mapeamentos,
+      mapeamentosStatus
+    ).subscribe({
       next: (resultado) => {
         this.isLoading = false;
+        this.snackBar.dismiss(); // Fechar a mensagem de progresso
 
         if (resultado.success) {
           this.snackBar.open(
-            `Importação concluída! ${resultado.unidadesImportadas}/${resultado.totalUnidades} unidades importadas.`,
+            `Estrutura importada com sucesso! ${resultado.totalUnidades || unidades.length} unidades processadas.`,
             'Fechar',
             {
               duration: 7000,
@@ -227,21 +352,37 @@ export class ImportarProdutosComponent implements OnInit {
 
           // Limpar seleções após importação bem-sucedida
           this.selectionModel.clear();
-        } else {
-          this.snackBar.open(resultado.message || 'Falha na importação.', 'Ver detalhes', {
-            duration: 10000,
-            panelClass: ['error-snackbar']
-          });
 
-          if (resultado.erros && resultado.erros.length > 0) {
-            console.error('Erros de importação:', resultado.erros);
+          // Voltar para lista de obras
+          this.voltarEtapa();
+        } else {
+          this.snackBar.open(
+            resultado.message || 'Falha na importação da estrutura.',
+            'Ver detalhes',
+            {
+              duration: 10000,
+              panelClass: ['error-snackbar']
+            }
+          );
+
+          if (resultado.error) {
+            console.error('Erro na importação:', resultado.error);
           }
         }
       },
       error: (error) => {
-        console.error('Erro durante importação:', error);
+        console.error('Erro durante importação da estrutura:', error);
         this.isLoading = false;
-        this.snackBar.open('Erro interno durante a importação.', 'Fechar', {
+        this.snackBar.dismiss(); // Fechar a mensagem de progresso
+
+        let mensagemErro = 'Erro interno durante a importação.';
+        if (error.error && error.error.message) {
+          mensagemErro = error.error.message;
+        } else if (error.message) {
+          mensagemErro = error.message;
+        }
+
+        this.snackBar.open(mensagemErro, 'Fechar', {
           duration: 5000,
           panelClass: ['error-snackbar']
         });
@@ -282,6 +423,34 @@ export class ImportarProdutosComponent implements OnInit {
   // Método para track by na lista de unidades
   trackByUnidade(index: number, unidade: UnidadeDetalhadaModel): string {
     return `${unidade.codigoObra}-${unidade.codigoUnidade}`;
+  }
+
+  // Método para obter valor de campo personalizado (otimizado)
+  getValorCampoPersonalizado(unidade: UnidadeDetalhadaModel, nomeCampo: string): string | null {
+    // Tentar busca direta primeiro (mais rápido)
+    let valor = unidade[nomeCampo] ?? unidade[nomeCampo.toUpperCase()] ?? unidade[nomeCampo.toLowerCase()];
+
+    // Se não encontrou, fazer busca case-insensitive nas chaves
+    if (valor === undefined || valor === null || valor === 'null' || valor === '') {
+      const todasChaves = Object.keys(unidade);
+      const chaveEncontrada = todasChaves.find(k => k.toLowerCase() === nomeCampo.toLowerCase());
+      if (chaveEncontrada) {
+        valor = unidade[chaveEncontrada];
+      }
+    }
+
+    // Se não encontrou e valor é inválido, retornar null
+    if (valor === undefined || valor === null || valor === 'null' || valor === '') {
+      return null;
+    }
+
+    return valor;
+  }
+
+  // Método para verificar se campo tem valor válido
+  hasValorCampoPersonalizado(unidade: UnidadeDetalhadaModel, nomeCampo: string): boolean {
+    const valor = this.getValorCampoPersonalizado(unidade, nomeCampo);
+    return valor !== null && valor !== '';
   }
 
   // Método para toggle de seleção ao clicar no card
@@ -365,13 +534,11 @@ export class ImportarProdutosComponent implements OnInit {
       return;
     }
 
-    // Criar request com IdProduto e unidades
-    const request = {
-      idProduto: idProduto,
-      unidades: unidadesParaAtualizar
-    };
+    // Obter código da obra selecionada
+    const codigoObra = this.obraSelecionada.codigoObra;
 
-    this.erpService.atualizarIdExterno(request).subscribe({
+    // Chamar serviço com os parâmetros corretos (idProduto, codigoObra, unidades)
+    this.erpService.atualizarIdExterno(idProduto, codigoObra, unidadesParaAtualizar).subscribe({
       next: (resultado) => {
         this.isLoading = false;
 

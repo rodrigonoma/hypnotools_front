@@ -233,17 +233,18 @@
             </div>
           </div>
 
-          <!-- Espelho de Vendas - Grid de Unidades -->
+          <!-- Espelho de Vendas - Grid de Unidades com Scroll Otimizado -->
           <div class="espelho-container" *ngIf="unidadesDetalhadas.length > 0">
-            <div class="unidades-grid">
-              <div
-                *ngFor="let unidade of unidadesDetalhadas; trackBy: trackByUnidade"
-                class="unidade-card"
-                [class.selected]="selectionModel.isSelected(unidade)"
-                [class.disponivel]="(unidade.status ?? '').toLowerCase().includes('disponível')"
-                [class.vendida]="(unidade.status ?? '').toLowerCase().includes('vendida')"
-                [class.reservada]="(unidade.status ?? '').toLowerCase().includes('reservada')"
-                (click)="toggleUnidadeSelection(unidade)">
+            <div class="unidades-scroll-wrapper" (scroll)="onScroll($event)">
+              <div class="unidades-grid">
+                <div
+                  *ngFor="let unidade of unidadesExibidas; trackBy: trackByUnidade"
+                  class="unidade-card"
+                  [class.selected]="selectionModel.isSelected(unidade)"
+                  [class.disponivel]="(unidade.status ?? '').toLowerCase().includes('disponível')"
+                  [class.vendida]="(unidade.status ?? '').toLowerCase().includes('vendida')"
+                  [class.reservada]="(unidade.status ?? '').toLowerCase().includes('reservada')"
+                  (click)="toggleUnidadeSelection(unidade)">
 
                 <!-- Header com checkbox e conteúdo -->
                 <div class="unidade-header">
@@ -288,17 +289,29 @@
                   </div>
 
                   <!-- Campos personalizados dinâmicos -->
-                  <div class="info-line" *ngFor="let campo of camposPersonalizados"
-                       [ngIf]="unidade[campo.campo] && unidade[campo.campo] !== '0' && unidade[campo.campo] !== '' && unidade[campo.campo] !== null">
-                    <mat-icon class="info-icon">info</mat-icon>
-                    <span>{{ campo.descricao }}: {{ unidade[campo.campo] }}</span>
-                  </div>
+                  <ng-container *ngIf="camposPersonalizados && camposPersonalizados.length > 0">
+                    <div class="info-line" *ngFor="let campo of camposPersonalizados"
+                         [class.campo-vazio]="!hasValorCampoPersonalizado(unidade, campo.campo)">
+                      <mat-icon class="info-icon">label</mat-icon>
+                      <span>
+                        <strong>{{ campo.descricao }}:</strong>
+                        {{ getValorCampoPersonalizado(unidade, campo.campo) || 'Não informado' }}
+                      </span>
+                    </div>
+                  </ng-container>
                 </div>
 
                 <!-- Indicador de seleção -->
                 <div class="selection-indicator" *ngIf="selectionModel.isSelected(unidade)">
                   <mat-icon>check_circle</mat-icon>
                 </div>
+              </div>
+
+              <!-- Indicador de mais cards para carregar -->
+              <div class="loading-more" *ngIf="unidadesExibidas.length < unidadesDetalhadas.length">
+                <p>Exibindo {{ unidadesExibidas.length }} de {{ unidadesDetalhadas.length }} unidades</p>
+                <p class="scroll-hint">Role para carregar mais...</p>
+              </div>
               </div>
             </div>
           </div>

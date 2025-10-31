@@ -91,16 +91,35 @@
     cursor: not-allowed;
     opacity: 0.7;
   }
+
+  mat-card-header {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  mat-card-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  mat-card-content {
+    padding: 0 16px 16px 16px;
+    flex: 1;
+  }
 }
 
 .card-icon {
   width: 48px;
   height: 48px;
+  min-width: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16px;
+  flex-shrink: 0;
 
   &.primary {
     background-color: #3f51b5;
@@ -119,6 +138,8 @@
 
   mat-icon {
     font-size: 24px;
+    width: 24px;
+    height: 24px;
   }
 }
 
@@ -128,23 +149,27 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.92);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   border-radius: 4px;
+  z-index: 10;
 
   mat-icon {
-    font-size: 32px;
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
     color: #999;
   }
 
   span {
-    font-size: 0.9rem;
+    font-size: 1rem;
     color: #666;
-    font-weight: 500;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
   }
 }
 
@@ -161,12 +186,18 @@
 
   .info-item {
     display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 0;
     border-bottom: 1px solid #eee;
 
     &:last-child {
       border-bottom: none;
+    }
+
+    strong {
+      color: #666;
+      font-size: 0.85rem;
     }
   }
 }

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Hypnotools/**)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Read(//c/hypnocore/HypnoCore/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

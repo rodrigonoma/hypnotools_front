@@ -373,15 +373,60 @@
   border-radius: 8px;
   padding: 16px;
   margin-top: 16px;
+  height: 70vh;
+}
+
+.unidades-scroll-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  // Otimizações de performance
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+
+  // Scrollbar personalizada
+  &::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
 }
 
 .unidades-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  max-height: 70vh;
-  overflow-y: auto;
   padding: 8px;
+}
+
+.loading-more {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px;
+  color: #666;
+
+  p {
+    margin: 8px 0;
+  }
+
+  .scroll-hint {
+    font-size: 0.9rem;
+    color: #999;
+    font-style: italic;
+  }
 }
 
 .unidade-card {
@@ -395,6 +440,10 @@
   min-height: 180px;
   display: flex;
   flex-direction: column;
+
+  // Otimizações de performance para cards individuais
+  contain: layout style paint;
+  content-visibility: auto;
 
   &:hover {
     transform: translateY(-2px);
@@ -515,6 +564,24 @@
           color: #2e7d2e;
           font-size: 1rem;
         }
+      }
+
+      &.campo-vazio {
+        opacity: 0.5;
+        font-style: italic;
+
+        .info-icon {
+          color: #ccc;
+        }
+
+        span {
+          color: #999;
+        }
+      }
+
+      strong {
+        margin-right: 4px;
+        color: #555;
       }
     }
   }
